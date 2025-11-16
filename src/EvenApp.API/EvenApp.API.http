@@ -1,0 +1,6 @@
+@EvenApp.API_HostAddress = http://localhost:5264
+
+GET {{EvenApp.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
