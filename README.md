@@ -476,12 +476,87 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 For support, email support@evenapp.com or open an issue in the repository.
 
+## 🔄 CI/CD Pipeline
+
+This project includes comprehensive GitHub Actions workflows for continuous integration and deployment:
+
+### Workflows
+
+1. **Backend CI/CD** (`.github/workflows/backend-ci.yml`)
+   - Builds .NET solution
+   - Runs tests
+   - Security scanning
+   - Code analysis
+   - Publishes build artifacts
+
+2. **Frontend CI/CD** (`.github/workflows/frontend-ci.yml`)
+   - Installs dependencies
+   - Runs linter
+   - Builds production bundle
+   - Uploads build artifacts
+
+3. **Deployment** (`.github/workflows/deploy.yml`)
+   - Builds and packages backend
+   - Builds frontend for production
+   - Ready for Azure, AWS, Vercel, Netlify deployment
+   - Triggered on main branch pushes or version tags
+
+4. **Database Migration** (`.github/workflows/database-migration.yml`)
+   - Manual workflow for database migrations
+   - Supports development, staging, and production environments
+
+5. **Code Quality** (`.github/workflows/code-quality.yml`)
+   - SonarCloud integration
+   - ESLint checks
+   - Code formatting validation
+
+6. **Release** (`.github/workflows/release.yml`)
+   - Automated release creation on version tags
+   - Generates changelog
+   - Creates release assets
+
+7. **Main CI Pipeline** (`.github/workflows/ci.yml`)
+   - Combined workflow for all checks
+   - Runs on every push and pull request
+
+### Setting Up CI/CD
+
+The workflows are ready to use. To enable deployment, add the following secrets to your GitHub repository:
+
+**For Azure Deployment:**
+- `AZURE_WEBAPP_PUBLISH_PROFILE`
+
+**For Vercel Deployment:**
+- `VERCEL_TOKEN`
+- `VERCEL_ORG_ID`
+- `VERCEL_PROJECT_ID`
+
+**For Netlify Deployment:**
+- `NETLIFY_AUTH_TOKEN`
+- `NETLIFY_SITE_ID`
+
+**For Database Migrations:**
+- `MYSQL_HOST`
+- `MYSQL_USER`
+- `MYSQL_PASSWORD`
+- `MYSQL_DATABASE`
+
+**For Code Quality:**
+- `SONAR_TOKEN`
+
+**For Frontend Environment:**
+- `VITE_API_BASE_URL`
+
+### Viewing Workflow Status
+
+Visit the **Actions** tab in your GitHub repository to see workflow runs and their status.
+
 ## 🔮 Roadmap
 
+- [x] CI/CD pipeline
 - [ ] Unit test coverage
 - [ ] Integration tests
 - [ ] Docker containerization
-- [ ] CI/CD pipeline
 - [ ] Mobile app (React Native)
 - [ ] Barcode scanning integration
 - [ ] Multi-warehouse support
