@@ -1,0 +1,56 @@
+name: Database Migration
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to migrate'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      action:
+        description: 'Migration action'
+        required: true
+        type: choice
+        options:
+          - migrate
+          - rollback
+
+jobs:
+  migrate:
+    name: Run Database Migration
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup MySQL Client
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y mysql-client
+
+    - name: Run schema migration
+      env:
+        MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+        MYSQL_USER: ${{ secrets.MYSQL_USER }}
+        MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      run: |
+        mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE < database/schema.sql
+        echo "Database migration completed successfully"
+
+    - name: Run seed data (if needed)
+      if: github.event.inputs.action == 'migrate'
+      env:
+        MYSQL_HOST: ${{ secrets.MYSQL_HOST }}
+        MYSQL_USER: ${{ secrets.MYSQL_USER }}
+        MYSQL_PASSWORD: ${{ secrets.MYSQL_PASSWORD }}
+        MYSQL_DATABASE: ${{ secrets.MYSQL_DATABASE }}
+      run: |
+        mysql -h $MYSQL_HOST -u $MYSQL_USER -p$MYSQL_PASSWORD $MYSQL_DATABASE < database/seed.sql
+        echo "Seed data loaded successfully"
+

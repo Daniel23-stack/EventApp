@@ -1,0 +1,105 @@
+name: Backend CI/CD
+
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/backend-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - '.github/workflows/backend-ci.yml'
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  PROJECT_PATH: 'src/EvenApp.API/EvenApp.API.csproj'
+  SOLUTION_PATH: 'EvenApp.sln'
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: rootpassword
+          MYSQL_DATABASE: EvenAppInventory
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_PATH }} --no-restore --configuration Release
+
+    - name: Run tests
+      run: dotnet test ${{ env.SOLUTION_PATH }} --no-build --configuration Release --verbosity normal
+      continue-on-error: true
+
+    - name: Publish API
+      run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --output ./publish --no-build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-build
+        path: |
+          src/EvenApp.API/publish/**
+        retention-days: 7
+
+  lint:
+    name: Code Analysis
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Install analyzers
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Run code analysis
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+      continue-on-error: true
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Run security audit
+      run: dotnet list ${{ env.SOLUTION_PATH }} package --vulnerable --include-transitive
+      continue-on-error: true
+

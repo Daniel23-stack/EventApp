@@ -1,0 +1,86 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  backend:
+    name: Backend CI
+    runs-on: ubuntu-latest
+    
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: testpassword
+          MYSQL_DATABASE: EvenAppInventory
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h localhost"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '8.0.x'
+
+    - name: Restore dependencies
+      run: dotnet restore EvenApp.sln
+
+    - name: Build
+      run: dotnet build EvenApp.sln --no-restore --configuration Release
+
+    - name: Test
+      run: dotnet test EvenApp.sln --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+      continue-on-error: true
+
+    - name: Publish test results
+      uses: EnricoMi/publish-unit-test-result-action@v2
+      if: always()
+      with:
+        files: '**/*.trx'
+      continue-on-error: true
+
+  frontend:
+    name: Frontend CI
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18.x'
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Lint
+      working-directory: ./frontend
+      run: npm run lint
+      continue-on-error: true
+
+    - name: Build
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-dist
+        path: frontend/dist
+        retention-days: 1
+

@@ -1,0 +1,116 @@
+name: Deploy Application
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  NODE_VERSION: '18.x'
+
+jobs:
+  deploy-backend:
+    name: Deploy Backend API
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Restore dependencies
+      run: dotnet restore EvenApp.sln
+
+    - name: Build solution
+      run: dotnet build EvenApp.sln --configuration Release --no-restore
+
+    - name: Publish API
+      run: dotnet publish src/EvenApp.API/EvenApp.API.csproj --configuration Release --output ./publish --no-build
+
+    - name: Create deployment package
+      run: |
+        cd publish
+        tar -czf ../api-deployment.tar.gz .
+        cd ..
+
+    - name: Upload deployment package
+      uses: actions/upload-artifact@v4
+      with:
+        name: api-deployment
+        path: api-deployment.tar.gz
+        retention-days: 30
+
+    # Uncomment and configure for your deployment target
+    # - name: Deploy to Azure
+    #   uses: azure/webapps-deploy@v2
+    #   with:
+    #     app-name: 'evenapp-api'
+    #     publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+    #     package: ./publish
+
+    # - name: Deploy to AWS
+    #   run: |
+    #     # Add your AWS deployment commands here
+    #     echo "Deploy to AWS"
+
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v')
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build for production
+      working-directory: ./frontend
+      run: npm run build
+      env:
+        VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-deployment
+        path: frontend/dist/**
+        retention-days: 30
+
+    # Uncomment and configure for your deployment target
+    # - name: Deploy to Vercel
+    #   uses: amondnet/vercel-action@v25
+    #   with:
+    #     vercel-token: ${{ secrets.VERCEL_TOKEN }}
+    #     vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+    #     vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+    #     working-directory: ./frontend
+
+    # - name: Deploy to Netlify
+    #   uses: nwtgck/actions-netlify@v3.0
+    #   with:
+    #     publish-dir: './frontend/dist'
+    #     production-branch: main
+    #     github-token: ${{ secrets.GITHUB_TOKEN }}
+    #     deploy-message: "Deploy from GitHub Actions"
+    #   env:
+    #     NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+    #     NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+
